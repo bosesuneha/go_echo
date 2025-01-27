@@ -38,11 +38,11 @@ on:
   workflow_dispatch:
 
 env:
-  ACR_RESOURCE_GROUP: aksatlanta-testing-devhub-e2e-artifact-gen-pvtcluster-dhe2e
-  AZURE_CONTAINER_REGISTRY: devhube2e3a35ec5e9cac48998ec60d9b34fe7cfd
+  ACR_RESOURCE_GROUP: sunehabose
+  AZURE_CONTAINER_REGISTRY: testdevhubacr
   CONTAINER_NAME: kubeimage
-  CLUSTER_RESOURCE_GROUP: aksatlanta-testing-devhub-e2e-artifact-gen-pvtcluster-dhe2e
-  CLUSTER_NAME: privateaksatlanta-testingdevhub-e2e-artifact-gendhe2e
+  CLUSTER_RESOURCE_GROUP: sunehabose
+  CLUSTER_NAME: test-pvt-cluster
   DEPLOYMENT_MANIFEST_PATH: |
     manifests/deployment.yaml
     manifests/service.yaml
@@ -115,7 +115,7 @@ jobs:
 
       # Deploys application based on given manifest  file
       - name: Deploys application
-        uses: Azure/k8s-deploy@v4
+        uses: Azure/k8s-deploy@v5
         with:
           action: deploy
           manifests: ${{ env.DEPLOYMENT_MANIFEST_PATH }}
