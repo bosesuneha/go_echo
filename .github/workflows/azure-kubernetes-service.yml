@@ -115,18 +115,20 @@ jobs:
       # Function to setup aks command for private cluster
       - name: Setup aks command for private cluster
         run: |
-          function setup_aks_command() {
+          echo 'function setup_aks_command() {
             command_id=$(az aks command invoke --resource-group ${{ env.CLUSTER_RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --command-id $1 --query "command.id" -o tsv)
             result=$(az aks command result --resource-group ${{ env.CLUSTER_RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --command-id $command_id)
             echo $result
             exit_code=$(az aks command result --resource-group ${{ env.CLUSTER_RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --command-id $command_id --query "exitCode" -o tsv)
-          }
+            return $exit_code
+          }' >> $GITHUB_ENV
 
       # Create Namespace
       - name: Create Namespace
         if: ${{ env.ENABLENAMESPACECREATION == 'true' }}
         run: |
           if [ ${{ steps.isPrivate.outputs.PRIVATE_CLUSTER}} == 'true' ]; then
+            source $GITHUB_ENV
             exit_code=$(setup_aks_command "kubectl get namespace ${{ env.NAMESPACE }} || kubectl create namespace ${{ env.NAMESPACE }}")
             if [ $exit_code -ne 0 ]; then
               echo "Namespace creation failed"
@@ -140,6 +142,7 @@ jobs:
       - name: Validate Namespace Exists
         run: |
           if [ ${{ steps.isPrivate.outputs.PRIVATE_CLUSTER}} == 'true' ]; then
+            source $GITHUB_ENV
             setup_aks_command "kubectl get namespace ${{ env.NAMESPACE }}"
           else
             kubectl get namespace ${{ env.NAMESPACE }}
