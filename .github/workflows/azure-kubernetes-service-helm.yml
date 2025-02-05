@@ -11,7 +11,7 @@
 # To configure this workflow:
 #
 # 1. Set the following secrets in your repository (instructions for getting these
-#    https://docs.microsoft.com/en-us/azure/developer/github/connect-from-azure?tabs=azure-cli%2Clinux):
+#    https://docs.microsoft.com/en-us/azure/developer/github/connect-from-azure?tabs=azure-cli%2Clinux)):
 #    - AZURE_CLIENT_ID
 #    - AZURE_TENANT_ID
 #    - AZURE_SUBSCRIPTION_ID
@@ -22,20 +22,19 @@
 #    - CONTAINER_NAME (name of the container image you would like to push up to your ACR)
 #    - CLUSTER_NAME (name of the resource to deploy to - fleet name or managed cluster name)
 #    - CLUSTER_RESOURCE_GROUP (where your cluster is deployed)
-#    - CLUSTER_RESOURCE_TYPE (type of resource to deploy to, either 'Microsoft.ContainerService/fleets' or 'Microsoft.ContainerService/managedCluster')
+#    - CLUSTER_RESOURCE_TYPE (type of resource to deploy to, either 'Microsoft.ContainerService/fleets' or 'Microsoft.ContainerService/managedClusters')
 #    - DOCKER_FILE (path to your Dockerfile)
 #    - BUILD_CONTEXT_PATH (path to the context of your Dockerfile)
+#    - CHART_PATH (path to your helm chart)
+#    - CHART_OVERRIDE_PATH (path to your helm chart with override values)
+#    - CHART_OVERRIDES (override values for your helm chart)
 #    - NAMESPACE (namespace to deploy your application)
-#
-# 3. Choose the appropriate render engine for the bake step https://github.com/Azure/k8s-bake. The config below assumes Kustomize.
-#    Set your kustomizationPath and kubectl-version to suit your configuration.
-#    - KUSTOMIZE_PATH (the path where your Kustomize manifests are located)
 #
 # For more information on GitHub Actions for Azure, refer to https://github.com/Azure/Actions
 # For more samples to get started with GitHub Action workflows to deploy to Azure, refer to https://github.com/Azure/actions-workflow-samples
 # For more options with the actions used below please refer to https://github.com/Azure/login
 
-name: test-kustomize-pvt
+name: test-helm-pvt
 
 on:
   push:
@@ -49,11 +48,13 @@ env:
   CLUSTER_NAME: aks-pvt-cluster-test
   CLUSTER_RESOURCE_GROUP: sunehabose
   CLUSTER_RESOURCE_TYPE: Microsoft.ContainerService/managedClusters
-  KUSTOMIZE_PATH: ./overlays/production
   DOCKER_FILE: ./Dockerfile
   BUILD_CONTEXT_PATH: .
-  NAMESPACE: test-kustomize
-  ENABLENAMESPACECREATION: true
+  CHART_PATH: ./charts
+  CHART_OVERRIDE_PATH: ./charts/production.yaml
+  CHART_OVERRIDES: replicas=2
+  NAMESPACE: default
+  ENABLENAMESPACECREATION: false
 
 jobs:
   buildImage:
@@ -76,7 +77,7 @@ jobs:
       # Builds and pushes an image up to your Azure Container Registry
       - name: Build and push image to ACR
         run: |
-          az acr build --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }} --registry ${{ env.AZURE_CONTAINER_REGISTRY }} -g ${{ env.ACR_RESOURCE_GROUP }} -f ${{ env.DOCKER_FILE }} ${{ env.BUILD_CONTEXT_PATH }}
+          az acr build --image ${{ env.CONTAINER_NAME }}:${{ github.sha }} --registry ${{ env.AZURE_CONTAINER_REGISTRY }} -g ${{ env.ACR_RESOURCE_GROUP }} -f ${{ env.DOCKER_FILE }} ${{ env.BUILD_CONTEXT_PATH }}
   deploy:
     permissions:
       actions: read
@@ -100,7 +101,7 @@ jobs:
       - name: Set up kubelogin for non-interactive login
         uses: azure/use-kubelogin@v1
         with:
-          kubelogin-version: 'v0.0.25'
+          kubelogin-version: "v0.0.25"
 
       # Retrieves your Azure Kubernetes Service cluster's kubeconfig file
       - name: Get K8s context
@@ -108,14 +109,14 @@ jobs:
         with:
           resource-group: ${{ env.CLUSTER_RESOURCE_GROUP }}
           cluster-name: ${{ env.CLUSTER_NAME }}
-          admin: 'false'
-          use-kubelogin: 'true'
           resource-type: ${{ env.CLUSTER_RESOURCE_TYPE }}
+          admin: "false"
+          use-kubelogin: "true"
 
       # Checks if the AKS cluster is private
       - name: Is private cluster
-        if: ${{ env.CLUSTER_RESOURCE_TYPE != 'Microsoft.ContainerService/fleets' }}
         id: isPrivate
+        if: ${{ env.CLUSTER_RESOURCE_TYPE != 'Microsoft.ContainerService/fleets' }}
         run: |
           result=$(az aks show --resource-group ${{ env.CLUSTER_RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --query "apiServerAccessProfile.enablePrivateCluster")
           echo "PRIVATE_CLUSTER=$result" >> "$GITHUB_OUTPUT"
@@ -151,26 +152,23 @@ jobs:
             kubectl get namespace ${{ env.NAMESPACE }}
           fi
 
-      # Runs Kustomize to create manifest files
-      - name: Bake deployment
-        uses: azure/k8s-bake@v2
-        with:
-          renderEngine: "kustomize"
-          kustomizationPath: ${{ env.KUSTOMIZE_PATH }}
-          kubectl-version: latest
-        id: bake
+      # Deploys application
+      - name: Deploy application on private cluster
+        if: ${{ steps.isPrivate.outputs.PRIVATE_CLUSTER == 'true' }}
+        run: |
+          command_id=$(az aks command invoke --resource-group ${{ env.CLUSTER_RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --command "helm upgrade --wait -i -f ${{ env.CHART_OVERRIDE_PATH }} --set ${{ env.CHART_OVERRIDES }} --set image.tag=${{ github.sha }} automated-deployment ${{ env.CHART_PATH }} --namespace ${{ env.NAMESPACE }} --timeout 240s" --file . --query id -o tsv)
+          result=$(az aks command result --resource-group ${{ env.CLUSTER_RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --command-id $command_id)
+          echo "Helm upgrade result: $result"
+          exitCode=$(az aks command result --resource-group ${{ env.CLUSTER_RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --command-id $command_id --query exitCode -o tsv)
 
-      # Deploys application based on manifest files from previous step
-      - name: Deploy application
-        uses: Azure/k8s-deploy@v5
-        with:
-          action: deploy
-          manifests: ${{ steps.bake.outputs.manifestsBundle }}
-          images: |
-            ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}
-          resource-group: ${{ env.CLUSTER_RESOURCE_GROUP }}
-          name: ${{ env.CLUSTER_NAME }}
-          private-cluster: ${{ steps.isPrivate.outputs.PRIVATE_CLUSTER == 'true' }}
-          namespace: ${{ env.NAMESPACE }}
-          resource-type: ${{ env.CLUSTER_RESOURCE_TYPE }}
+          if [ $exitCode -ne 0 ]; then
+            exit $exitCode
+          fi
+
+      - name: Deploy application on public cluster
+        if: ${{ steps.isPrivate.outputs.PRIVATE_CLUSTER != 'true' }}
+        env:
+          WAIT_FLAG: ${{ (env.CLUSTER_RESOURCE_TYPE != 'Microsoft.ContainerService/fleets') && '--wait' || '' }} # don't wait for fleet hubs
+        run: |
+          helm upgrade ${{ env.WAIT_FLAG }} -i -f ${{ env.CHART_OVERRIDE_PATH }} --set ${{ env.CHART_OVERRIDES }} --set image.tag=${{ github.sha }} automated-deployment ${{ env.CHART_PATH }} --namespace ${{ env.NAMESPACE }}
 
