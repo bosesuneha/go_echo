@@ -1,6 +1,6 @@
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: default
+  name: test-kustomize
   labels:
     kubernetes.azure.com/generator: draft

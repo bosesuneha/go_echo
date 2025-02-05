@@ -1,5 +1,5 @@
 namePrefix: production-
-namespace: default
+namespace: test-kustomize
 resources:
   - ../../base
 patchesStrategicMerge:

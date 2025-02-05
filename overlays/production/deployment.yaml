@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: goecho
     kubernetes.azure.com/generator: draft
   name: goecho
-  namespace: default
+  namespace: test-kustomize
 spec:
   selector:
     matchLabels:

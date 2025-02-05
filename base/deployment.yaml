@@ -5,7 +5,7 @@ metadata:
   labels:
     app.kubernetes.io/name: goecho
     kubernetes.azure.com/generator: draft
-  namespace: default
+  namespace: test-kustomize
 spec:
   replicas: 1
   selector:
