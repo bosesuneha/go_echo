@@ -52,8 +52,8 @@ env:
   KUSTOMIZE_PATH: ./overlays/production
   DOCKER_FILE: ./Dockerfile
   BUILD_CONTEXT_PATH: .
-  NAMESPACE: default
-  ENABLENAMESPACECREATION: false
+  NAMESPACE: test-kustomize
+  ENABLENAMESPACECREATION: true
 
 jobs:
   buildImage:
