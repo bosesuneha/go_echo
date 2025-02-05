@@ -47,7 +47,7 @@ env:
   DOCKER_FILE: ./Dockerfile
   BUILD_CONTEXT_PATH: .
   NAMESPACE: devhub-e2e-test-id-1
-  ENABLENAMESPACECREATION: false
+  ENABLENAMESPACECREATION: true
 
 jobs:
   buildImage:
