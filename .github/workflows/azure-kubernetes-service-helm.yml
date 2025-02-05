@@ -54,7 +54,7 @@ env:
   CHART_OVERRIDE_PATH: ./charts/production.yaml
   CHART_OVERRIDES: replicas=2
   NAMESPACE: test-helm
-  ENABLENAMESPACECREATION: false
+  ENABLENAMESPACECREATION: true
 
 jobs:
   buildImage:
