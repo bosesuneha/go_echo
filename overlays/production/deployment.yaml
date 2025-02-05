@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: goecho
+    kubernetes.azure.com/generator: draft
+  name: goecho
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: goecho
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+    spec:
+      containers:
+      - image: testdevhubacr.azurecr.io/goecho
+        name: goecho
+        resources: {}
+status: {}

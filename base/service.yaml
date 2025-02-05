@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: goecho
+  namespace: default
+  labels:
+    app.kubernetes.io/name: goecho
+    kubernetes.azure.com/generator: draft
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: goecho
+  ports:
+    - protocol: TCP
+      port: 1323
+      targetPort: 80
