@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.azure.com/tls-cert-keyvault-managed: "true" 
+    kubernetes.azure.com/tls-cert-keyvault-uri: "https://sb-kv-test.vault.azure.net/certificates/aaa"
+  name: "test-ingress-aaa-ingress"
+  namespace: "namespace-workflow-1746228705521"
+  labels:
+    app.kubernetes.io/name: test-ingress-aaa-ingress
+    app.kubernetes.io/part-of: aaa-project
+    kubernetes.azure.com/generator: draft
+spec:
+  ingressClassName: webapprouting.kubernetes.azure.com
+  rules:
+    - host: "aaa.zone040b3c16ff14a42d8832eacd987ae9fe4.com"
+      http:
+        paths:
+          - backend:
+              service:
+                name: "aaa"
+                port:
+                  number: 80
+            path: "/"
+            pathType: Prefix
+  tls:
+    - hosts:
+        - "aaa.zone040b3c16ff14a42d8832eacd987ae9fe4.com"
+      secretName: "keyvault-aaa"

@@ -1,13 +1,16 @@
-FROM golang AS builder
-ARG CGO_ENABLED=0
-WORKDIR /app
+FROM golang:1.18 AS builder
 
+WORKDIR /build
 COPY go.mod go.sum ./
-RUN go mod download
+RUN go mod download && go mod verify
 COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -v -o app-binary
 
-RUN go build -o echo
+FROM gcr.io/distroless/static-debian12
 
-FROM scratch
-COPY --from=builder /app/echo /echo
-CMD ["./echo"]
+ENV PORT=80
+EXPOSE 80
+
+WORKDIR /app
+COPY --from=builder /build/app-binary . 
+CMD ["/app/app-binary"]
