@@ -5,11 +5,11 @@ on:
   workflow_dispatch:
 
 env:
-  ACR_RESOURCE_GROUP: test-suneha-rg
-  AZURE_CONTAINER_REGISTRY: testACRCA
+  ACR_RESOURCE_GROUP: suneha-test-rg
+  AZURE_CONTAINER_REGISTRY: sunehatestaksregistry
   CONTAINER_NAME: go-echo
-  CLUSTER_NAME: test-cluster-suneha
-  CLUSTER_RESOURCE_GROUP: test-suneha-rg
+  CLUSTER_NAME: suneha-test-aks
+  CLUSTER_RESOURCE_GROUP: suneha-test-rg
   CLUSTER_RESOURCE_TYPE: Microsoft.ContainerService/managedClusters
   DEPLOYMENT_MANIFEST_PATH: |
     manifests/deployment.yaml
